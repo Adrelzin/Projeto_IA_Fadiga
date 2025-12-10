@@ -9,6 +9,7 @@ import plotly.express as px
 import os
 import requests
 from pathlib import Path
+import gdown
 
 st.set_page_config(
     page_title="Detecção de Fadiga",
@@ -44,49 +45,34 @@ threshold = st.sidebar.slider(
     help="Valores mais baixos aumentam sensibilidade para fadiga"
 )
 
-MODEL_URLS = {
-    'best_cnn': 'https://drive.google.com/file/d/1uc1vLhyxv-kW2kYKj6Ul6uMzgU-ff4iH/view?usp=sharing',
-    'cnn_final': 'https://drive.google.com/file/d/1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p/view?usp=sharing', 
-    'best_transfer': 'https://drive.google.com/file/d/176gsQwCJqiYjQ3ughK5xmsfuXVAmBhA5/view?usp=sharing', 
-    'transfer_final': 'https://drive.google.com/file/d/1W-TIRlkjBSUlFbjT4Z_Zq0d6GoC_8F2W/view?usp=sharing'
+# URLs corretas do Google Drive (IDs extraídos dos seus links)
+MODEL_IDS = {
+    'best_cnn': '1uc1vLhyxv-kW2kYKj6Ul6uMzgU-ff4iH',
+    'cnn_final': '1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p', 
+    'best_transfer': '176gsQwCJqiYjQ3ughK5xmsfuXVAmBhA5', 
+    'transfer_final': '1W-TIRlkjBSUlFbjT4Z_Zq0d6GoC_8F2W'
 }
 
-def download_model_from_github(url, output_path):
+def download_model_from_gdrive(file_id, output_path):
+    """Baixa arquivo do Google Drive usando gdown"""
     if os.path.exists(output_path):
         return True
-    
-    if 'SEU_USUARIO' in url or 'SEU_REPO' in url:
-        st.warning("Configure as URLs do GitHub no código")
-        return False
     
     try:
         st.info(f"Baixando modelo: {output_path}...")
         
-        response = requests.get(url, stream=True, timeout=30)
-        response.raise_for_status()
+        url = f'https://drive.google.com/uc?id={file_id}'
+        gdown.download(url, output_path, quiet=False)
         
-        total_size = int(response.headers.get('content-length', 0))
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            st.success(f"Modelo baixado com sucesso: {output_path}")
+            return True
+        else:
+            st.error(f"Falha ao baixar {output_path}")
+            return False
         
-        with open(output_path, 'wb') as f:
-            if total_size == 0:
-                f.write(response.content)
-            else:
-                downloaded = 0
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-        
-        st.success(f"Modelo baixado com sucesso: {output_path}")
-        return True
-        
-    except requests.exceptions.RequestException as e:
-        st.error(f"Erro ao baixar {output_path}: {str(e)}")
-        if os.path.exists(output_path):
-            os.remove(output_path)
-        return False
     except Exception as e:
-        st.error(f"Erro inesperado ao baixar {output_path}: {str(e)}")
+        st.error(f"Erro ao baixar {output_path}: {str(e)}")
         if os.path.exists(output_path):
             os.remove(output_path)
         return False
@@ -142,11 +128,11 @@ def load_model(model_type):
             best_path = 'best_cnn_model.h5'
             final_path = 'cnn_final.h5'
             
-            if download_model_from_github(MODEL_URLS.get('best_cnn', ''), best_path):
+            if download_model_from_gdrive(MODEL_IDS['best_cnn'], best_path):
                 model = create_cnn_model()
                 model.load_weights(best_path)
                 return model, "CNN (Best)", best_path
-            elif download_model_from_github(MODEL_URLS.get('cnn_final', ''), final_path):
+            elif download_model_from_gdrive(MODEL_IDS['cnn_final'], final_path):
                 model = create_cnn_model()
                 model.load_weights(final_path)
                 return model, "CNN (Final)", final_path
@@ -158,11 +144,11 @@ def load_model(model_type):
             best_path = 'best_transfer_model.h5'
             final_path = 'transfer_final.h5'
             
-            if download_model_from_github(MODEL_URLS.get('best_transfer', ''), best_path):
+            if download_model_from_gdrive(MODEL_IDS['best_transfer'], best_path):
                 model = create_transfer_model()
                 model.load_weights(best_path)
                 return model, "Transfer (Best)", best_path
-            elif download_model_from_github(MODEL_URLS.get('transfer_final', ''), final_path):
+            elif download_model_from_gdrive(MODEL_IDS['transfer_final'], final_path):
                 model = create_transfer_model()
                 model.load_weights(final_path)
                 return model, "Transfer (Final)", final_path
@@ -172,6 +158,8 @@ def load_model(model_type):
                 
     except Exception as e:
         st.error(f"Erro ao carregar modelo: {e}")
+        import traceback
+        st.error(f"Detalhes: {traceback.format_exc()}")
         return None, None, None
 
 def preprocess_image(image, target_size=(128, 128)):
@@ -276,10 +264,10 @@ with col2:
                 confidence = prediction_prob if prediction_prob > threshold else 1 - prediction_prob
                 
                 if predicted_class == "Fatigue":
-                    st.error("FADIGA DETECTADA")
+                    st.error("⚠️ FADIGA DETECTADA")
                     st.markdown("### A pessoa apresenta sinais de fadiga")
                 else:
-                    st.success("SEM FADIGA")
+                    st.success("✅ SEM FADIGA")
                     st.markdown("### A pessoa está alerta")
                 
                 metric_col1, metric_col2, metric_col3 = st.columns(3)
@@ -315,8 +303,16 @@ with st.sidebar.expander("Como usar"):
     4. Ajuste o threshold se necessário
     5. Veja os resultados da análise
     
-    **Nota:** Na primeira execução, os modelos serão baixados automaticamente do GitHub.
+    **Nota:** Na primeira execução, os modelos serão baixados automaticamente do Google Drive.
+    """)
+
+with st.sidebar.expander("ℹ️ Requisitos"):
+    st.markdown("""
+    Para executar este app, instale:
+    ```bash
+    pip install streamlit tensorflow pillow plotly gdown
+    ```
     """)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Sistema de Detecção de Fadiga v1.0**")
+st.sidebar.markdown("**Sistema de Detecção de Fadiga v1.1**")
