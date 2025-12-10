@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import layers  # Fixed: Added missing import
 from PIL import Image
 import plotly.graph_objects as go
 import plotly.express as px
@@ -183,10 +184,10 @@ with col2:
                 confidence = prediction_prob if prediction_prob > threshold else 1 - prediction_prob
                 
                 if predicted_class == "Fatigue":
-                    st.error("FADIGA DETECTADA")
+                    st.error("⚠️ FADIGA DETECTADA")
                     st.markdown("### A pessoa apresenta sinais de fadiga")
                 else:
-                    st.success("SEM FADIGA")
+                    st.success("✓ SEM FADIGA")
                     st.markdown("### A pessoa está alerta")
                 
                 metric_col1, metric_col2, metric_col3 = st.columns(3)
@@ -197,18 +198,33 @@ with col2:
                 with metric_col3:
                     st.metric("Threshold", f"{threshold*100:.0f}%")
 
-if uploaded_file is not None and model is not None:
-    st.markdown("---")
-    st.subheader("Visualizações Detalhadas")
+# Fixed: Added proper indentation and variable scope check
+if uploaded_file is not None:
+    # Only show visualizations if model was loaded successfully
+    if 'model' in locals() and model is not None:
+        st.markdown("---")
+        st.subheader("Visualizações Detalhadas")
+        
+        viz_col1, viz_col2 = st.columns(2)
+        
+        with viz_col1:
+            gauge_fig = create_confidence_gauge(confidence, predicted_class)
+            st.plotly_chart(gauge_fig, use_container_width=True)
+        
+        with viz_col2:
+            prob_fig = create_probability_chart(prediction_prob)
+            st.plotly_chart(prob_fig, use_container_width=True)
+
+# Add helpful information in the sidebar
+with st.sidebar.expander("ℹ️ Como usar"):
+    st.markdown("""
+    1. Faça upload de uma imagem facial
+    2. Ajuste o threshold se necessário
+    3. Veja os resultados da análise
+    4. Analise as visualizações detalhadas
     
-    viz_col1, viz_col2 = st.columns(2)
-    
-    with viz_col1:
-        gauge_fig = create_confidence_gauge(confidence, predicted_class)
-        st.plotly_chart(gauge_fig, use_container_width=True)
-    
-    with viz_col2:
-        prob_fig = create_probability_chart(prediction_prob)
-        st.plotly_chart(prob_fig, use_container_width=True)
-    
-    
+    **Dica:** Valores de threshold menores aumentam a sensibilidade para detectar fadiga.
+    """)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Sistema de Detecção de Fadiga v1.0**")
