@@ -1,0 +1,214 @@
+import streamlit as st
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from PIL import Image
+import plotly.graph_objects as go
+import plotly.express as px
+
+st.set_page_config(
+    page_title="Detecção de Fadiga",
+    layout="wide"
+)
+
+st.title("Sistema de Detecção de Fadiga")
+
+st.sidebar.header("Configurações")
+
+model_option = st.sidebar.selectbox(
+    "Escolha o modelo:",
+    ["CNN Customizado"]
+)
+
+with st.sidebar.expander("Sobre os Modelos"):
+    st.markdown("""
+    **CNN Customizado:**
+    - Acurácia: 78%
+    - Recall Fadiga: 86%
+    - Melhor para detectar fadiga
+    
+    **Transfer Learning:**
+    - Acurácia: 83%
+    - Métricas balanceadas
+    - Mais eficiente
+    """)
+
+threshold = st.sidebar.slider(
+    "Threshold de Decisão",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.5,
+    step=0.05,
+    help="Valores mais baixos aumentam sensibilidade para fadiga"
+)
+
+def create_cnn_model(input_shape=(128, 128, 3)):
+    model = keras.Sequential([
+        layers.Input(shape=input_shape),
+        layers.Conv2D(32, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(128, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(256, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Flatten(),
+        layers.Dense(512, activation='relu'),
+        layers.Dropout(0.5),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.3),
+        layers.Dense(1, activation='sigmoid')
+    ])
+    return model
+
+@st.cache_resource
+def load_model(model_type):
+    try:
+        model = create_cnn_model()
+        model.load_weights('best_cnn_model.h5')
+        return model, "CNN"
+    except Exception as e:
+        st.error(f"Erro ao carregar modelo: {e}")
+        return None, None
+
+
+def preprocess_image(image, target_size=(128, 128)):
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
+    image = image.resize(target_size)
+    
+    img_array = np.array(image)
+    img_array = img_array / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    
+    return img_array
+
+def create_confidence_gauge(confidence, prediction):
+    color = "red" if prediction == "Fatigue" else "green"
+    
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=confidence * 100,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Confiança da Predição", 'font': {'size': 20}},
+        number={'suffix': "%", 'font': {'size': 40}},
+        gauge={
+            'axis': {'range': [0, 100], 'tickwidth': 1},
+            'bar': {'color': color},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+            'steps': [
+                {'range': [0, 50], 'color': 'lightgray'},
+                {'range': [50, 75], 'color': 'gray'},
+                {'range': [75, 100], 'color': 'darkgray'}
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.75,
+                'value': threshold * 100
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        height=300,
+        margin=dict(l=20, r=20, t=50, b=20)
+    )
+    
+    return fig
+
+def create_probability_chart(prob_fatigue):
+    prob_non_fatigue = 1 - prob_fatigue
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            x=['Fadiga', 'Não Fadiga'],
+            y=[prob_fatigue * 100, prob_non_fatigue * 100],
+            marker_color=['#FF6B6B', '#4ECDC4'],
+            text=[f'{prob_fatigue*100:.1f}%', f'{prob_non_fatigue*100:.1f}%'],
+            textposition='auto',
+        )
+    ])
+    
+    fig.update_layout(
+        title="Distribuição de Probabilidades",
+        yaxis_title="Probabilidade (%)",
+        xaxis_title="Classe",
+        height=300,
+        showlegend=False
+    )
+    
+    return fig
+
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.subheader("Upload da Imagem")
+    uploaded_file = st.file_uploader(
+        "Escolha uma imagem facial",
+        type=['jpg', 'jpeg', 'png'],
+        help="Formatos aceitos: JPG, JPEG, PNG"
+    )
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Imagem carregada", use_container_width=True)
+        
+        st.info(f"Dimensões: {image.size[0]}x{image.size[1]} | Formato: {image.format}")
+
+with col2:
+    st.subheader("Resultados da Análise")
+    
+    if uploaded_file is not None:
+        with st.spinner("Carregando modelo..."):
+            model, model_name = load_model(model_option)
+        
+        if model is not None:
+            with st.spinner("Analisando imagem..."):
+                processed_img = preprocess_image(image)
+                prediction_prob = model.predict(processed_img, verbose=0)[0][0]
+                
+                predicted_class = "NonFatigue" if prediction_prob > threshold else "Fatigue"
+                confidence = prediction_prob if prediction_prob > threshold else 1 - prediction_prob
+                
+                if predicted_class == "Fatigue":
+                    st.error("FADIGA DETECTADA")
+                    st.markdown("### A pessoa apresenta sinais de fadiga")
+                else:
+                    st.success("SEM FADIGA")
+                    st.markdown("### A pessoa está alerta")
+                
+                metric_col1, metric_col2, metric_col3 = st.columns(3)
+                with metric_col1:
+                    st.metric("Modelo", model_name)
+                with metric_col2:
+                    st.metric("Confiança", f"{confidence*100:.1f}%")
+                with metric_col3:
+                    st.metric("Threshold", f"{threshold*100:.0f}%")
+
+if uploaded_file is not None and model is not None:
+    st.markdown("---")
+    st.subheader("Visualizações Detalhadas")
+    
+    viz_col1, viz_col2 = st.columns(2)
+    
+    with viz_col1:
+        gauge_fig = create_confidence_gauge(confidence, predicted_class)
+        st.plotly_chart(gauge_fig, use_container_width=True)
+    
+    with viz_col2:
+        prob_fig = create_probability_chart(prediction_prob)
+        st.plotly_chart(prob_fig, use_container_width=True)
+    
+    
