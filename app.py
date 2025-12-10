@@ -20,22 +20,6 @@ st.title("Sistema de Detecção de Fadiga")
 
 st.sidebar.header("Configurações")
 
-model_option = st.sidebar.selectbox(
-    "Escolha o modelo:",
-    ["CNN", "Transfer Learning"]
-)
-
-with st.sidebar.expander("Sobre os Modelos"):
-    st.markdown("""
-    **CNN:**
-    - Modelo CNN customizado treinado
-    - Tenta carregar: best_cnn_model.h5 → cnn_final.h5
-    
-    **Transfer Learning:**
-    - Modelo com Transfer Learning
-    - Tenta carregar: best_transfer_model.h5 → transfer_final.h5
-    """)
-
 threshold = st.sidebar.slider(
     "Threshold de Decisão",
     min_value=0.0,
@@ -47,9 +31,7 @@ threshold = st.sidebar.slider(
 
 MODEL_IDS = {
     'best_cnn': '1uc1vLhyxv-kW2kYKj6Ul6uMzgU-ff4iH',
-    'cnn_final': '1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p', 
-    'best_transfer': '176gsQwCJqiYjQ3ughK5xmsfuXVAmBhA5', 
-    'transfer_final': '1W-TIRlkjBSUlFbjT4Z_Zq0d6GoC_8F2W'
+    'cnn_final': '1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p'
 }
 
 def download_model_from_gdrive(file_id, output_path):
@@ -104,56 +86,23 @@ def create_cnn_model(input_shape=(128, 128, 3)):
     ])
     return model
 
-def create_transfer_model(input_shape=(128, 128, 3)):
-    base_model = keras.applications.MobileNetV2(
-        input_shape=input_shape,
-        include_top=False,
-        weights=None
-    )
-    
-    model = keras.Sequential([
-        base_model,
-        layers.GlobalAveragePooling2D(),
-        layers.Dense(128, activation='relu'),
-        layers.Dropout(0.5),
-        layers.Dense(1, activation='sigmoid')
-    ])
-    return model
-
 @st.cache_resource
-def load_model(model_type):
+def load_model():
     try:
-        if model_type == "CNN":
-            best_path = 'best_cnn_model.h5'
-            final_path = 'cnn_final.h5'
-            
-            if download_model_from_gdrive(MODEL_IDS['best_cnn'], best_path):
-                model = create_cnn_model()
-                model.load_weights(best_path)
-                return model, "CNN (Best)", best_path
-            elif download_model_from_gdrive(MODEL_IDS['cnn_final'], final_path):
-                model = create_cnn_model()
-                model.load_weights(final_path)
-                return model, "CNN (Final)", final_path
-            else:
-                st.error("Nenhum modelo CNN encontrado ou baixado")
-                return None, None, None
-                
+        best_path = 'best_cnn_model.h5'
+        final_path = 'cnn_final.h5'
+        
+        if download_model_from_gdrive(MODEL_IDS['best_cnn'], best_path):
+            model = create_cnn_model()
+            model.load_weights(best_path)
+            return model, "CNN (Best)", best_path
+        elif download_model_from_gdrive(MODEL_IDS['cnn_final'], final_path):
+            model = create_cnn_model()
+            model.load_weights(final_path)
+            return model, "CNN (Final)", final_path
         else:
-            best_path = 'best_transfer_model.h5'
-            final_path = 'transfer_final.h5'
-            
-            if download_model_from_gdrive(MODEL_IDS['best_transfer'], best_path):
-                model = create_transfer_model()
-                model.load_weights(best_path)
-                return model, "Transfer (Best)", best_path
-            elif download_model_from_gdrive(MODEL_IDS['transfer_final'], final_path):
-                model = create_transfer_model()
-                model.load_weights(final_path)
-                return model, "Transfer (Final)", final_path
-            else:
-                st.error("Nenhum modelo Transfer encontrado ou baixado")
-                return None, None, None
+            st.error("Nenhum modelo CNN encontrado ou baixado")
+            return None, None, None
                 
     except Exception as e:
         st.error(f"Erro ao carregar modelo: {e}")
@@ -252,7 +201,7 @@ with col2:
     
     if uploaded_file is not None:
         with st.spinner("Carregando modelo..."):
-            model, model_name, model_path = load_model(model_option)
+            model, model_name, model_path = load_model()
         
         if model is not None:
             with st.spinner("Analisando imagem..."):
