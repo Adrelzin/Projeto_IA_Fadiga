@@ -45,10 +45,10 @@ threshold = st.sidebar.slider(
 )
 
 MODEL_URLS = {
-    'best_cnn': 'https://github.com/SEU_USUARIO/SEU_REPO/raw/main/models/best_cnn_model.h5',
-    'cnn_final': 'https://github.com/SEU_USUARIO/SEU_REPO/raw/main/models/cnn_final.h5', 
-    'best_transfer': 'https://github.com/SEU_USUARIO/SEU_REPO/raw/main/models/best_transfer_model.h5', 
-    'transfer_final': 'https://github.com/SEU_USUARIO/SEU_REPO/raw/main/models/transfer_final.h5'
+    'best_cnn': 'https://drive.google.com/file/d/1uc1vLhyxv-kW2kYKj6Ul6uMzgU-ff4iH/view?usp=sharing',
+    'cnn_final': 'https://drive.google.com/file/d/1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p/view?usp=sharing', 
+    'best_transfer': 'https://drive.google.com/file/d/176gsQwCJqiYjQ3ughK5xmsfuXVAmBhA5/view?usp=sharing', 
+    'transfer_final': 'https://drive.google.com/file/d/1W-TIRlkjBSUlFbjT4Z_Zq0d6GoC_8F2W/view?usp=sharing'
 }
 
 def download_model_from_github(url, output_path):
