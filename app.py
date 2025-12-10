@@ -45,7 +45,6 @@ threshold = st.sidebar.slider(
     help="Valores mais baixos aumentam sensibilidade para fadiga"
 )
 
-# URLs corretas do Google Drive (IDs extraídos dos seus links)
 MODEL_IDS = {
     'best_cnn': '1uc1vLhyxv-kW2kYKj6Ul6uMzgU-ff4iH',
     'cnn_final': '1jz8SbiwkvlwYqgpdrcH-EHc4iwQ-bx1p', 
@@ -264,10 +263,10 @@ with col2:
                 confidence = prediction_prob if prediction_prob > threshold else 1 - prediction_prob
                 
                 if predicted_class == "Fatigue":
-                    st.error("⚠️ FADIGA DETECTADA")
+                    st.error("FADIGA DETECTADA")
                     st.markdown("### A pessoa apresenta sinais de fadiga")
                 else:
-                    st.success("✅ SEM FADIGA")
+                    st.success("SEM FADIGA")
                     st.markdown("### A pessoa está alerta")
                 
                 metric_col1, metric_col2, metric_col3 = st.columns(3)
@@ -294,25 +293,3 @@ if uploaded_file is not None:
         with viz_col2:
             prob_fig = create_probability_chart(prediction_prob)
             st.plotly_chart(prob_fig, use_container_width=True)
-
-with st.sidebar.expander("Como usar"):
-    st.markdown("""
-    1. Escolha o modelo (CNN ou Transfer Learning)
-    2. Faça upload de uma imagem facial
-    3. Aguarde o download do modelo (primeira vez)
-    4. Ajuste o threshold se necessário
-    5. Veja os resultados da análise
-    
-    **Nota:** Na primeira execução, os modelos serão baixados automaticamente do Google Drive.
-    """)
-
-with st.sidebar.expander("ℹ️ Requisitos"):
-    st.markdown("""
-    Para executar este app, instale:
-    ```bash
-    pip install streamlit tensorflow pillow plotly gdown
-    ```
-    """)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Sistema de Detecção de Fadiga v1.1**")
