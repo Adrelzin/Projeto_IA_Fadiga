@@ -35,7 +35,6 @@ typing-extensions==4.15.0
 tzdata==2025.2
 urllib3==2.6.1
 watchdog==6.0.0
+tensorflow==2.12.0
+keras==2.12.0
 
-# Dependências principais para IA
-tensorflow==2.15.0
-keras==2.15.0
