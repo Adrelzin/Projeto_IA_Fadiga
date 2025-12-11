@@ -1,7 +1,7 @@
 streamlit
-tensorflow>=2.20.0
+tensorflow
 numpy
-pandas
 pillow
 plotly
 gdown
+pandas
